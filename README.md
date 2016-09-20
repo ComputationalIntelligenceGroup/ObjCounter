@@ -19,3 +19,5 @@ The _3D_OC_Options class is the same as used in _3D_Object_Counter plugin, and s
 
 ObjCounter is an ImageJ plugin, thus ImageJ must be installed (see http://fiji.sc/ to install FIJI a "batteries-included" distribution of ImageJ).
 
+To install the plugin just copy the .JAR file into the plugin directory of your ImageJ installation.
+
