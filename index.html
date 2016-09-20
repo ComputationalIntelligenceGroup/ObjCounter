@@ -58,6 +58,11 @@ to _3D_Object_Counter ).</p>
 <p>To install the plugin just copy the .JAR file into the plugin directory of your ImageJ installation
   (see <a href="http://imagej.net/Installing_3rd_party_plugins"> imageJ help </a> for more information).</p>
 
+<p> Trying to segment big object could lead to stack overflow due to the
+  recursive calls and to the default small stack size, just add the following line to the ImageJ.cfg config file in your ImageJ installation : </p>
+    <pre><code> -Xmx54000m -Xss515m -cp ij.jar ij.ImageJ </code></pre>
+
+
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/gherardovarando/ObjCounter">Objcounter</a> is maintained by <a href="https://github.com/gherardovarando">gherardovarando</a>.</span>
 
