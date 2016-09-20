@@ -29,17 +29,25 @@
 <h4>
 <a id="what-it-is" class="anchor" href="#what-it-is" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>What it is?</h4>
 
-<p>ObjCounter is an ImageJ plugin to segment connected objects in stack of iamges. 
-The plugin detects the objects, and it can create stacks with the labelled objects, 
-stacks with centroid or center of masses of the detected objects, and it can exports the results to csv format. 
-Moreover if an overlay (with single dots labelling every objects) is present then it is possible to evaluate the segmentation.</p>
+<p>ObjCounter is an ImageJ plugin to segment connected objects in stack of images.
+The plugin detects the objects, and it can create stacks with the labelled objects,
+stacks with centroid or center of masses of the detected objects, and it can
+exports the results to csv format.
+Moreover if an overlay (with single dots labelling every objects) is present
+then it is possible to evaluate the segmentation.</p>
 
-<p>ObjCounter is based partly on _3D_Object_Counter code by Fabrice P. Cordelières (<a href="http://imagej.net/3D_Objects_Counter">http://imagej.net/3D_Objects_Counter</a>).
-The algorithm to connect the objects is completely different to achieve better performance.
-Moreover the logic is different, the connection is done in every slice, then based on the intersection between objects in 
-different slices the objects are linked or not (modifying the fraction parameter change the tolerance to connections, e.g. with fraction=0 all the possible connections will be made).</p>
+<p>ObjCounter is based partly on _3D_Object_Counter code
+  by Fabrice P. Cordelières
+  (<a href="http://imagej.net/3D_Objects_Counter">http://imagej.net/3D_Objects_Counter</a>).
+The algotihm is different, the connection is done in every slice,
+then based on the intersection between objects in
+different slices the objects are linked or not
+(modifying the fraction parameter change the tolerance to connections,
+e.g. with fraction=0 all the possible connections will be made, similar
+to _3D_Object_Counter ).</p>
 
-<p>The _3D_OC_Options class is the same as used in _3D_Object_Counter plugin, and should not cause any conflict.</p>
+<p>The _3D_OC_Options class is the same as used in _3D_Object_Counter plugin,
+  and should not cause any conflict.</p>
 
 <h4>
 <a id="installation-and-dependencies" class="anchor" href="#installation-and-dependencies" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation and dependencies</h4>
@@ -56,6 +64,6 @@ different slices the objects are linked or not (modifying the fraction parameter
 
     </section>
 
-  
+
   </body>
 </html>
