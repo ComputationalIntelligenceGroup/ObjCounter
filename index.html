@@ -39,7 +39,7 @@ then it is possible to evaluate the segmentation.</p>
 
 <p>ObjCounter is based partly on _3D_Object_Counter code
   by Fabrice P. Cordelières
-  (<a href="http://imagej.net/3D_Objects_Counter">http://imagej.net/3D_Objects_Counter</a>).
+  (<a href="http://imagej.net/3D_Objects_Counter" target="new">http://imagej.net/3D_Objects_Counter</a>).
 The algotihm is different, the connection is done in every slice,
 then based on the intersection between objects in
 different slices the objects are linked or not
@@ -56,12 +56,12 @@ to _3D_Object_Counter ).</p>
 <p>ObjCounter is an ImageJ plugin, thus ImageJ must be installed (see <a href="http://fiji.sc/">http://fiji.sc/</a> to install FIJI a "batteries-included" distribution of ImageJ).</p>
 
 <p>To install the plugin just copy the .JAR file into the plugin directory of your ImageJ installation
-  (see <a href="http://imagej.net/Installing_3rd_party_plugins"> imageJ help </a> for more information).</p>
+  (see <a href="http://imagej.net/Installing_3rd_party_plugins" target="new"> imageJ help </a> for more information).</p>
 
 <p> Trying to segment big object could lead to stack overflow due to the
   recursive calls and to the default small stack size, just copy/paste the following line to the ImageJ.cfg config file in your ImageJ installation : </p>
   <pre><code>.jre/bin/java -Xmx54000m -Xss515m -cp ij.jar ij.ImageJ </code></pre>
-If you have problem with the Java configuration see <a href="http://imagejdocu.tudor.lu/doku.php?id=faq:technical:how_do_i_increase_the_memory_in_imagej"> ImageJ help </a> on example of Java configurations for ImageJ.
+If you have problem with the Java configuration see <a href="http://imagejdocu.tudor.lu/doku.php?id=faq:technical:how_do_i_increase_the_memory_in_imagej" target="new"> ImageJ help </a> on example of Java configurations for ImageJ.
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/gherardovarando/ObjCounter">Objcounter</a> is maintained by <a href="https://github.com/gherardovarando">gherardovarando</a>.</span>
