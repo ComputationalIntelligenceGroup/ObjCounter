@@ -58,10 +58,19 @@ to _3D_Object_Counter ).</p>
 <p>To install the plugin just copy the .JAR file into the plugin directory of your ImageJ installation
   (see <a href="http://imagej.net/Installing_3rd_party_plugins" target="new"> imageJ help </a> for more information).</p>
 
-<p> Trying to segment big object could lead to stack overflow due to the
-  recursive calls and to the default small stack size, just copy/paste the following line to the ImageJ.cfg config file in your ImageJ installation : </p>
-  <pre><code>.jre/bin/java -Xmx54000m -Xss515m -cp ij.jar ij.ImageJ </code></pre>
-If you have problem with the Java configuration see <a href="http://imagejdocu.tudor.lu/doku.php?id=faq:technical:how_do_i_increase_the_memory_in_imagej" target="new"> ImageJ help </a> on example of Java configurations for ImageJ.
+<p> Trying to segment big object could lead to thread stack overflow due to the
+  recursive calls and to the default small thread stack size.
+  To avoid this problem you need to change the Java option relative to the size of the thread stack, Java options are
+  defined in the ImageJ.cfg file in the main directory of your ImageJ installation
+  (see <a href="http://imagejdocu.tudor.lu/doku.php?id=faq:technical:how_do_i_increase_the_memory_in_imagej" target="new"> ImageJ help </a> on example of Java configurations for ImageJ ).
+  The thread stack size can be changed with the option <code> -XssSIZE </code> where size is the desired size of the thread stack.
+  Refer to Oracle documentation for a complete explanation of the Java options ( <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/java.html">Windows</a>,
+   <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html" target="new"> Linux </a>, <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html" target="new"> Mac OS X </a>)
+</p>
+
+</p>  In Linux just copy/paste the following line to the ImageJ.cfg config file in your ImageJ installation :
+  <pre><code>.jre/bin/java -Xss515m -cp ij.jar ij.ImageJ </code></pre>
+  </p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/gherardovarando/ObjCounter">Objcounter</a> is maintained by <a href="https://github.com/gherardovarando">gherardovarando</a>.</span>
