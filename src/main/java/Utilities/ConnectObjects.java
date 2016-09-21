@@ -7,7 +7,7 @@
  * Based on Counter3D class by Fabrice P. Cordelieres,
  * The algorithm are completely changed from Counter3D, the present 
  * implementation no longer use Object3D class.
- * Some methods as offset, imgArrayModifier are equal as Counter3D.
+ * Some methods as offset, imgArrayModifier are taken from Counter3D.
  * 
  * 
  *  License:
