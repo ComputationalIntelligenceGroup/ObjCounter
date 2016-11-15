@@ -992,7 +992,7 @@ public class ConnectObjects {
 		if (!getCentroid) populateCentroid();
 		try {
 			if (fileName==""){
-				fileName=title+".points";
+				fileName=title.replace(" ", "_")+".csv";
 			}
 			Path fileCSV = Files.createFile(Paths.get(path,fileName)) ;
 			String line ;
