@@ -34,6 +34,7 @@ import ij.gui.NewImage;
 import ij.gui.Overlay;
 import ij.gui.Roi;
 import ij.measure.Calibration;
+import ij.measure.ResultsTable;
 import ij.process.ImageProcessor;
 
 import java.awt.Font;
@@ -71,7 +72,7 @@ public class ConnectObjects {
 	Overlay overlay;
 	int toll=0;
 	boolean excludeOnEdges=false;
-	Path pathIm;
+	//Path pathIm;
 	
 
 	Map<Integer, Integer> IDcount,objAnchor, IDonEdge;
@@ -113,25 +114,23 @@ public class ConnectObjects {
 		maxSize=max;
 		this.fraction=fraction;
 		this.excludeOnEdges=excludeOnEdges;
-		if (depth!=8) throw new IllegalArgumentException("ConnectObjects expects 8-bits images only");
+		if (depth!=8 && depth!=16) throw new IllegalArgumentException("ConnectObjects expects 8-bits and 16-bits images only");
 
 		nbObj=length;       
 		imgArray=new int[length];
 		imgArrayModifier(image);
 		objID=new int[length];
 		tempArray=new int[length];
-		//IDcount=new int[length];
 		IDcount=new HashMap<Integer,Integer>();
 		IDonEdge=new HashMap<Integer,Integer>();
 		IDcount.put(0, length);
-		// IDrange = [min,max,sum,sum(squared),count]
 		IDrange=new HashMap<Integer,double[]>();
 
 		IDrange.put(0, new double[]{0,0,0,0,0});
 		objAnchor= new HashMap<Integer,Integer>();
 
 		overlay=image.getOverlay();
-		pathIm=Paths.get(IJ.getDirectory("current"));
+		//pathIm=Paths.get(IJ.getDirectory("current"));
 
 	}
 
@@ -306,7 +305,7 @@ public class ConnectObjects {
 
 
 	/**
-	 * iteratively expand object on not-tagged pixels that have been set free because too small
+	 * iteratively expand object on not-tagged pixels that have been set free (because too small)
 	 * @param i index of the pixel
 	 * @param value tag of the object to expand
 	 */
@@ -425,14 +424,9 @@ public class ConnectObjects {
 	private double pixelSimilarity(int i, int j){
 		double a,b;
 		double[] range=IDrange.get(tempArray[i]);
-		//a= (imgArray[i]-range[0])/range[1];
 		a= (imgArray[i])/range[2]; //probability
 		range=IDrange.get(tempArray[j]);
-		//b= (imgArray[j]-range[0])/range[1];
 		b= (imgArray[j])/range[2]; //probability
-		//return(Math.exp(-Math.abs(Math.pow((a-b),2))));
-		//return(1/(1+Math.abs(a-b)));
-
 		return(Math.sqrt(a*b));  //using something like Bhattacharyya coefficient/angle
 	}
 
@@ -497,8 +491,6 @@ public class ConnectObjects {
 		}
 
 
-
-
 		//delete small object and put consecutive objID  	
 		int newCurrID=0;
 		for (int i=1; i<=nbObj; i++){
@@ -514,7 +506,6 @@ public class ConnectObjects {
 			}
 			IJ.showStatus("checking size of objects");
 		}
-
 
 
 
@@ -558,7 +549,6 @@ public class ConnectObjects {
 	 * Marks objects on edges
 	 */
 	public void markOnEdges(){
-		//excludeOnEdges
 		for (int i=1; i<=nbObj; i++){
 			IDonEdge.put(i, 0);
 		}
@@ -615,7 +605,7 @@ public class ConnectObjects {
 			for (int x=0; x< width; x++){
 				for (int y=0; y< height; y++){
 					indx=offset(x,y,z);
-					if (objID[indx]>0){
+					if (objID[indx]>0 && objID[indx]<=nbObj){
 
 						centreOfMass[objID[indx]-1][0]+= imgArray[indx] * x  ;
 						centreOfMass[objID[indx]-1][1]+= imgArray[indx] * y  ;
@@ -678,7 +668,7 @@ public class ConnectObjects {
 			for (int x=0; x< width; x++){
 				for (int y=0; y< height; y++){
 					indx=offset(x,y,z);
-					if (objID[indx]>0){
+					if (objID[indx]>0 && objID[indx]<=nbObj){
 						centroid[objID[indx]-1][0]+= x  ;
 						centroid[objID[indx]-1][1]+= y  ;
 						centroid[objID[indx]-1][2]+= z  ;
@@ -914,7 +904,6 @@ public class ConnectObjects {
 				num++;
 				if (currentID>0){
 					indx++;
-
 					iterativeSubstitution(position, 0, currentID);
 				}
 			}
@@ -937,11 +926,12 @@ public class ConnectObjects {
 		}
 		for (int j=1; j<=nbRoi; j++){
 			if (inside[j-1]>0){
-				IJ.log("Roi "+polys.get(j).getName()+" contains "+inside[j-1]+" objects");
+				IJ.log("Roi "+polys.get(j).getName()+" contains "+inside[j-1]+" detected objects");
 			}
 		}
+		IJ.log("ROIs contains "+num+" overlay points ");
 		IJ.log(" " + indx+" object  of "+num+" has been corectly associated");
-		IJ.log(" " + totInside+" object  inside the ROI(s)");
+		IJ.log(" " + totInside+" detected objects with centroid  inside the ROI(s)");
 		double sensitivity=((double) indx)/num;
 		double precision=((double)indx)/totInside;
 		double f1Score=((double) 2*indx)/(num+totInside);
@@ -988,25 +978,17 @@ public class ConnectObjects {
 	 * @param fileName file name 
 	 * @param path path of where write the file
 	 */
-	public void writeCSV(String fileName, String path){
+	public ResultsTable getResultsTable(){
 		if (!getCentroid) populateCentroid();
-		try {
-			if (fileName==""){
-				fileName=title.replace(" ", "_")+".csv";
-			}
-			Path fileCSV = Files.createFile(Paths.get(path,fileName)) ;
-			String line ;
-			for (int i=0; i < nbObj;i++){
-				line = Float.toString(centroid[i][0])+ ","+Float.toString(centroid[i][1]) + "," + Float.toString(centroid[i][2] ) + 
-						"," + Integer.toString(IDonEdge.get(i+1) ) + System.lineSeparator() ;
-				Files.write(fileCSV,line.getBytes(),StandardOpenOption.APPEND);	
-			}
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	    ResultsTable rt = new ResultsTable();
+	    rt.setPrecision(5);
+		for (int i=0; i<nbObj; i++){
+			rt.setValue(1, i, centroid[i][0]);
+			rt.setValue(2, i, centroid[i][1]);
+			rt.setValue(3, i, centroid[i][2]);
+			rt.setValue(4, i, IDonEdge.get(i+1));
 		}
-
+        return rt;
 	}
 
 
