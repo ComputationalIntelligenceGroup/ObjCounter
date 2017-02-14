@@ -79,8 +79,8 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			return;
 		}
 
-		if (imp.getBitDepth()>8){
-			IJ.error("ObjectCounter only works on 8-bits image.");
+		if (imp.getBitDepth()>16){
+			IJ.error("ObjectCounter only works on 8-bits or 16-bits image.");
 			return;
 		}
 
@@ -173,10 +173,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		gd.addCheckbox("validation with overlay", false);
 
 
-
-		if (redirect) gd.addMessage("\nRedirection:\nImage used as a mask: "+this.title+"\nMeasures will be done on: "+this.redirectTo+(showMaskedImg?"\nMasked image will be shown":"")+".");
-		if (closeImg) gd.addMessage("\nCaution:\nImage(s) will be closed during the processing\n(see 3D-OC options to change this setting).");
-
 		gd.showDialog();
 
 
@@ -229,17 +225,14 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		fontSize=(int) Prefs.get("3D-OC-Options_fontSize.double", 10);
 		showNb=Prefs.get("3D-OC-Options_showNb.boolean", true);
 		whiteNb=Prefs.get("3D-OC-Options_whiteNb.boolean", true);
-
+		if (export2CSV) {
+			OC.getResultsTable().show("Centroids");;
+		}
 		if (showObj){OC.getObjMap(showNb, fontSize).show(); IJ.run("3-3-2 RGB");}
 		if (showCentro){OC.getCentroidMap(showNb, whiteNb, dotSize, fontSize).show(); IJ.run("3-3-2 RGB");}
 		if (showCOM){OC.getCentreOfMassMap(showNb, whiteNb, dotSize, fontSize).show(); IJ.run("3-3-2 RGB");}
 		if (computePointsMap) {OC.computePointsMap().show();}
-		if (export2CSV) {
-			OC.writeCSV("",IJ.getDirectory("current")+"points/");
-			String pathSave=IJ.getDirectory("current") + "objects/objects_"+title ;
-			ImagePlus obj= OC.getObjMap(showNb, fontSize);
-			IJ.save( obj , pathSave );
-		}
+
 		if (validate) {OC.getValidation();}
 
 
