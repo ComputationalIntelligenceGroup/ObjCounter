@@ -1,3 +1,4 @@
+
 /**
  * _ObjCounter.java
  *
@@ -22,11 +23,11 @@
 
  */
 
-
 import Utilities.ConnectObjects;
 import Utilities.holes_detection;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.Macro;
 import ij.Prefs;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
@@ -48,229 +49,286 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Vector;
 
-
-
-
 /**
  *
  * @author Gherardo Varando, gherardo.varando@gmail.com
  * @version 0.0.1 19/10/2016
  */
 public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
-	ImagePlus imp;
-	ImageProcessor ip;
-	int width, height, nbSlices, length, toll;
-	double min, max;
-	String title, redirectTo;
-	int thr, minSize, maxSize, dotSize, fontSize;
-	boolean excludeOnEdges, showObj, showSurf, showCentro, showCOM, showNb, whiteNb, newRT, showStat, showMaskedImg, closeImg, showSummary, redirect, showDensity, showPoints;
-	Vector sliders, values;
-	double fraction=0.5;
-	boolean validate=false;
-	boolean computePointsMap=false;
-	boolean export2CSV=false;
+
+	private static final String PARAM_SILENT = "silent";
+	private static final String PARAM_FAST = "fast";
+	private static final String PARAM_THRESHOLD = "threshold";
+	private static final String PARAM_SLICE = "slice";
+	private static final String PARAM_MIN = "min";
+	private static final String PARAM_MAX = "max";
+	private static final String PARAM_FRACTION = "fraction";
+	private static final String PARAM_TOLERANCE = "tolerance";
+	private static final String PARAM_SHOW_CENTROIDS = "show_centroids";
+	private static final String PARAM_SHOW_COM = "show_com";
+	private static final String PARAM_COMPUTE_POINTS_MAP = "compute_points_map";
+	private static final String PARAM_EXPORT_OBJECTS = "export_objects";
+	private static final String PARAM_EXPORT_POINTS = "export_points";
+	private static final String PARAM_EXPORT_RESULTS = "export_results";
+	private static final String PARAM_VALIDATE = "validate";
+	private static final String PARAM_OUTPUT_OBJECTS = "output_objects";
+	private static final String PARAM_OUTPUT_POINTS = "output_points";
+
+	private ImagePlus currentImage;
+	private ImageProcessor ip;
+	private int width, height, nbSlices, length, tolerance;
+	private double min, max;
+	private String title, redirectTo;
+	private int threshold, slice, minSize, maxSize, dotSize, fontSize;
+	private boolean excludeOnEdges, exportObjects, showCentroids, showCOM, showNb, whiteNb, redirect, fast,
+			exportResults;
+	private Vector sliders, values;
+	private double fraction = 0.5;
+	private boolean validate = false;
+	private boolean computePointsMap = false;
+	private boolean exportPoints = false;
+
 	public void run(String arg) {
-		if (IJ.versionLessThan("1.39i")) return;
+		if (IJ.versionLessThan("1.39i"))
+			return;
 
-		imp=WindowManager.getCurrentImage();
+		String macroOptions = Macro.getOptions();
+		boolean isSilent = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_SILENT, "false"));
 
-		if (imp==null){
+		currentImage = WindowManager.getCurrentImage();
+
+		if (currentImage == null) {
 			IJ.error("You need to open an image first.");
 			return;
 		}
 
-		if (imp.getBitDepth()>16){
+		if (currentImage.getBitDepth() > 16) {
 			IJ.error("ObjectCounter only works on 8-bits or 16-bits image.");
 			return;
 		}
 
-		width=imp.getWidth();
-		height=imp.getHeight();
-		nbSlices=imp.getStackSize();
-		length=height*width*nbSlices;
-		title=imp.getTitle();
+		width = currentImage.getWidth();
+		height = currentImage.getHeight();
+		nbSlices = currentImage.getStackSize();
+		length = height * width * nbSlices;
+		title = currentImage.getTitle();
 
-		min=Math.pow(2, imp.getBitDepth());
-		max=0;
+		min = Math.pow(2, currentImage.getBitDepth());
+		max = 0;
 
-		for (int i=1; i<=nbSlices; i++){
-			imp.setSlice(i);
-			ip=imp.getProcessor();
-			min=Math.min(min, imp.getStatistics().min);
-			max=Math.max(max, imp.getStatistics().max);
+		for (int i = 1; i <= nbSlices; i++) {
+			currentImage.setSlice(i);
+			ip = currentImage.getProcessor();
+			min = Math.min(min, currentImage.getStatistics().min);
+			max = Math.max(max, currentImage.getStatistics().max);
 		}
 
-		imp.setSlice((int)nbSlices/2);
-		imp.resetDisplayRange();
-		thr=ip.getAutoThreshold();
-		ip.setThreshold(thr, max,ImageProcessor.RED_LUT);
-		imp.updateAndDraw();
+		currentImage.setSlice((int) nbSlices / 2);
+		currentImage.resetDisplayRange();
+		threshold = ip.getAutoThreshold();
+		ip.setThreshold(threshold, max, ImageProcessor.RED_LUT);
+		currentImage.updateAndDraw();
 
+		minSize = (int) Prefs.get("3D-OC_minSize.double", 10);
+		maxSize = length;
+		excludeOnEdges = Prefs.get("3D-OC_excludeOnEdges.boolean", true);
+		exportObjects = Prefs.get("3D-OC_showObj.boolean", true);
+		showCentroids = Prefs.get("3D-OC_showCentro.boolean", true);
+		showCOM = Prefs.get("3D-OC_showCOM.boolean", true);
 
-		minSize=(int) Prefs.get("3D-OC_minSize.double", 10);
-		maxSize=length;
-		excludeOnEdges=Prefs.get("3D-OC_excludeOnEdges.boolean", true);
-		showObj=Prefs.get("3D-OC_showObj.boolean", true);
-		showSurf=Prefs.get("3D-OC_showSurf.boolean", true);
-		showCentro=Prefs.get("3D-OC_showCentro.boolean", true);
-		showCOM=Prefs.get("3D-OC_showCOM.boolean", true);
-		showStat=Prefs.get("3D-OC_showStat.boolean", true);
-		showSummary=Prefs.get("3D-OC_summary.boolean", true);
+		redirectTo = Prefs.get("3D-OC-Options_redirectTo.string", "none");
+		redirect = !this.redirectTo.equals("none") && WindowManager.getImage(this.redirectTo) != null;
 
-		showMaskedImg=Prefs.get("3D-OC-Options_showMaskedImg.boolean", true);
-		closeImg=Prefs.get("3D-OC-Options_closeImg.boolean", false);
-
-
-		redirectTo=Prefs.get("3D-OC-Options_redirectTo.string", "none");
-		redirect=!this.redirectTo.equals("none") && WindowManager.getImage(this.redirectTo)!=null;
-
-		if (redirect){
-			ImagePlus imgRedir=WindowManager.getImage(this.redirectTo);
-			if (!(imgRedir.getWidth()==this.width && imgRedir.getHeight()==this.height && imgRedir.getNSlices()==this.nbSlices) || imgRedir.getBitDepth()>16){
-				redirect=false;
-				showMaskedImg=false;
+		if (redirect) {
+			ImagePlus imgRedir = WindowManager.getImage(this.redirectTo);
+			if (!(imgRedir.getWidth() == this.width && imgRedir.getHeight() == this.height
+					&& imgRedir.getNSlices() == this.nbSlices) || imgRedir.getBitDepth() > 16) {
+				redirect = false;
 				IJ.log("Redirection canceled: images should have the same size and a depth of 8- or 16-bits.");
 			}
-			if (imgRedir.getTitle().equals(this.title)){
-				redirect=false;
-				showMaskedImg=false;
+			if (imgRedir.getTitle().equals(this.title)) {
+				redirect = false;
 				IJ.log("Redirection canceled: both images have the same title.");
 			}
 		}
 
-		if (!redirect){
+		if (!redirect) {
 			Prefs.set("3D-OC-Options_redirectTo.string", "none");
 			Prefs.set("3D-OC-Options_showMaskedImg.boolean", false);
 		}
 
+		if (isSilent) {
+			try {
+				threshold = Integer.parseInt(Macro.getValue(macroOptions, PARAM_THRESHOLD, String.valueOf(threshold)));
+				slice = Integer.parseInt(Macro.getValue(macroOptions, PARAM_SLICE, String.valueOf(nbSlices / 2)));
+				fast = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_FAST, "false"));
+				minSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MIN, "0"));
+				maxSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MAX, "0"));
+				fraction = Double.parseDouble(Macro.getValue(macroOptions, PARAM_FRACTION, "0.5"));
+				tolerance = Integer.parseInt(Macro.getValue(macroOptions, PARAM_TOLERANCE, "0"));
+				showCentroids = Boolean.parseBoolean(
+						Macro.getValue(macroOptions, PARAM_SHOW_CENTROIDS, String.valueOf(showCentroids)));
+				showCOM = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_SHOW_COM, String.valueOf(showCOM)));
+				computePointsMap = Boolean
+						.parseBoolean(Macro.getValue(macroOptions, PARAM_COMPUTE_POINTS_MAP, "false"));
+				exportObjects = Boolean.parseBoolean(
+						Macro.getValue(macroOptions, PARAM_EXPORT_OBJECTS, String.valueOf(exportObjects)));
+				exportPoints = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_POINTS, "false"));
+				exportResults = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_RESULTS, "false"));
+				validate = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_VALIDATE, "false"));
+			} catch (Exception ex) {
+				IJ.error("Any param format is incorrect.");
+				return;
+			}
+		} else {
+			GenericDialog gd = new GenericDialog("ObjCounter v0.0.1 (beta)");
 
-		GenericDialog gd=new GenericDialog("ObjCounter v0.0.1 (beta)");
+			gd.addSlider("Threshold", min, max, threshold);
+			gd.addSlider("Slice", 1, nbSlices, nbSlices / 2);
 
-		gd.addSlider("Threshold", min, max, thr);
-		gd.addSlider("Slice", 1, nbSlices, nbSlices/2);
+			sliders = gd.getSliders();
+			((Scrollbar) sliders.elementAt(0)).addAdjustmentListener(this);
+			((Scrollbar) sliders.elementAt(1)).addAdjustmentListener(this);
+			values = gd.getNumericFields();
+			((TextField) values.elementAt(0)).addFocusListener(this);
+			((TextField) values.elementAt(1)).addFocusListener(this);
 
-		sliders=gd.getSliders();
-		((Scrollbar)sliders.elementAt(0)).addAdjustmentListener(this);
-		((Scrollbar)sliders.elementAt(1)).addAdjustmentListener(this);
-		values = gd.getNumericFields();
-		((TextField)values.elementAt(0)).addFocusListener(this);
-		((TextField)values.elementAt(1)).addFocusListener(this);
+			gd.addCheckbox("fast algorithm", false);
+			gd.addMessage("Size filter: ");
+			gd.addNumericField("Min.", minSize, 0);
+			gd.addNumericField("Max.", maxSize, 0);
+			gd.addNumericField("Fraction for connections ", 0.5, 3);
+			gd.addNumericField("tollerance for propagation", 0, 0);
+			gd.addCheckbox("Exclude_objects_on_edges", excludeOnEdges);
+			gd.addMessage("Maps to show: ");
+			gd.addCheckbox("Objects", exportObjects);
+			gd.addCheckbox("Centroids", showCentroids);
+			gd.addCheckbox("Centres_of_masses", showCOM);
+			gd.addCheckbox("Point map", false);
+			gd.addCheckbox("Export_points to CSV", false);
+			gd.addCheckbox("Export_results to CSV", false);
+			gd.addCheckbox("validation with overlay", false);
 
-		gd.addCheckbox("fast algorithm", false);
-		gd.addMessage("Size filter: ");
-		gd.addNumericField("Min.",minSize, 0);
-		gd.addNumericField("Max.", maxSize, 0);
-		gd.addNumericField("Fraction for connections ", 0.5, 3);
-		gd.addNumericField("tollerance for propagation", 0, 0);
-		gd.addCheckbox("Exclude_objects_on_edges", excludeOnEdges);
-		gd.addMessage("Maps to show: ");
-		gd.addCheckbox("Objects", showObj);
-		gd.addCheckbox("Centroids", showCentro);
-		gd.addCheckbox("Centres_of_masses", showCOM);
-		gd.addCheckbox("Point map", false);
-		gd.addCheckbox("Export_points to CSV", false);
-		gd.addCheckbox("Export_results to CSV", false);
-		gd.addCheckbox("validation with overlay", false);
+			gd.showDialog();
 
+			if (gd.wasCanceled()) {
+				ip.resetThreshold();
+				currentImage.updateAndDraw();
+				return;
+			}
 
-		gd.showDialog();
-
-
-		if (gd.wasCanceled()){
-			ip.resetThreshold();
-			imp.updateAndDraw();
-			return;
+			threshold = (int) gd.getNextNumber();
+			slice = (int) gd.getNextNumber();
+			fast = gd.getNextBoolean();
+			minSize = (int) gd.getNextNumber();
+			maxSize = (int) gd.getNextNumber();
+			fraction = (double) gd.getNextNumber();
+			tolerance = (int) gd.getNextNumber();
+			excludeOnEdges = gd.getNextBoolean();
+			exportObjects = gd.getNextBoolean();
+			showCentroids = gd.getNextBoolean();
+			showCOM = gd.getNextBoolean();
+			computePointsMap = gd.getNextBoolean();
+			exportPoints = gd.getNextBoolean();
+			exportResults = gd.getNextBoolean();
+			validate = gd.getNextBoolean();
 		}
-
-
-		thr = (int) gd.getNextNumber();
-		int slice= (int) gd.getNextNumber();
-		boolean fast = gd.getNextBoolean();
-		minSize=(int) gd.getNextNumber();
-		maxSize=(int) gd.getNextNumber();
-		fraction= (double) gd.getNextNumber();
-		toll= (int) gd.getNextNumber();
-		excludeOnEdges=gd.getNextBoolean();
-		showObj=gd.getNextBoolean();
-		showCentro=gd.getNextBoolean();
-		showCOM=gd.getNextBoolean();
-		computePointsMap=gd.getNextBoolean();
-		export2CSV=gd.getNextBoolean();
-		boolean exportResults=gd.getNextBoolean();
-		validate=gd.getNextBoolean();
-
-
 
 		Prefs.set("3D-OC_minSize.double", minSize);
 		Prefs.set("3D-OC_excludeOnEdges.boolean", excludeOnEdges);
-		Prefs.set("3D-OC_showObj.boolean", showObj);
-		Prefs.set("3D-OC_showCentro.boolean", showCentro);
+		Prefs.set("3D-OC_showObj.boolean", exportObjects);
+		Prefs.set("3D-OC_showCentro.boolean", showCentroids);
 		Prefs.set("3D-OC_showCOM.boolean", showCOM);
 		Prefs.set("Obj_Count_fraction.double", fraction);
-		Prefs.set("Obj_Count_toll.int", toll);
-		if (!redirect) Prefs.set("3D-OC-Options_redirectTo.string", "none");
+		Prefs.set("Obj_Count_toll.int", tolerance);
+		if (!redirect)
+			Prefs.set("3D-OC-Options_redirectTo.string", "none");
 
 		ip.resetThreshold();
-		imp.updateAndDraw();
-
+		currentImage.updateAndDraw();
 
 		IJ.log("STARTING");
 		long start = System.currentTimeMillis();
-		ConnectObjects OC=new ConnectObjects(imp, thr, minSize, maxSize, fraction, toll, fast, excludeOnEdges);
+		ConnectObjects OC = new ConnectObjects(currentImage, threshold, slice, minSize, maxSize, fraction, tolerance,
+				fast, excludeOnEdges);
 
+		dotSize = (int) Prefs.get("3D-OC-Options_dotSize.double", 5);
+		fontSize = (int) Prefs.get("3D-OC-Options_fontSize.double", 10);
+		showNb = Prefs.get("3D-OC-Options_showNb.boolean", true);
+		whiteNb = Prefs.get("3D-OC-Options_whiteNb.boolean", true);
 
-
-
-		dotSize=(int) Prefs.get("3D-OC-Options_dotSize.double", 5);
-		fontSize=(int) Prefs.get("3D-OC-Options_fontSize.double", 10);
-		showNb=Prefs.get("3D-OC-Options_showNb.boolean", true);
-		whiteNb=Prefs.get("3D-OC-Options_whiteNb.boolean", true);
-		if (export2CSV) {
-			OC.getResultsTable().show("Centroids");;
+		if (exportPoints) {
+			String outputPath = Macro.getValue(macroOptions, PARAM_OUTPUT_POINTS, null);
+			if (outputPath != null) {
+				OC.writeCSV(outputPath);
+			} else {
+				OC.getResultsTable().show("Centroids");
+			}
 		}
-		if (showObj){OC.getObjMap(showNb, fontSize).show(); IJ.run("3-3-2 RGB");}
-		if (showCentro){OC.getCentroidMap(showNb, whiteNb, dotSize, fontSize).show(); IJ.run("3-3-2 RGB");}
-		if (showCOM){OC.getCentreOfMassMap(showNb, whiteNb, dotSize, fontSize).show(); IJ.run("3-3-2 RGB");}
-		if (computePointsMap) {OC.computePointsMap().show();}
+		if (exportObjects) {
+			ImagePlus objectMap = OC.getObjMap(showNb, fontSize);
+			IJ.run(objectMap, "3-3-2 RGB", null);
+			String outputPath = Macro.getValue(macroOptions, PARAM_OUTPUT_OBJECTS, null);
+			if (outputPath != null) {
+				IJ.save(objectMap, outputPath);
+			} else {
+				objectMap.show();
+			}
+		}
+		if (showCentroids) {
+			OC.getCentroidMap(showNb, whiteNb, dotSize, fontSize).show();
+			IJ.run("3-3-2 RGB");
+		}
+		if (showCOM) {
+			OC.getCentreOfMassMap(showNb, whiteNb, dotSize, fontSize).show();
+			IJ.run("3-3-2 RGB");
+		}
+		if (computePointsMap) {
+			OC.computePointsMap().show();
+		}
 
-		if (validate) {OC.getValidation();}
+		if (validate) {
+			OC.getValidation();
+		}
 
-
-		if (exportResults){
-			holes_detection hc=new holes_detection(title);
+		if (exportResults) {
+			holes_detection hc = new holes_detection(title);
 			hc.detect();
 
-			Calibration cal=imp.getCalibration();
-			double voxelVolume=cal.getX(1)*cal.getY(1)*cal.getZ(1);
+			Calibration cal = currentImage.getCalibration();
+			double voxelVolume = cal.getX(1) * cal.getY(1) * cal.getZ(1);
 
-			int[] numbPoint=OC.getNumberOfPoint();
-			double volume=width*height*nbSlices*voxelVolume;
-			double density=numbPoint[0]/volume;
-			double densS=numbPoint[1]/volume;
-			double densH=numbPoint[0]/(volume-hc.getHolesVolume());
-			double densSH=numbPoint[1]/(volume-hc.getHolesVolume());
+			int[] numbPoint = OC.getNumberOfPoint();
+			double volume = width * height * nbSlices * voxelVolume;
+			double density = numbPoint[0] / volume;
+			double densS = numbPoint[1] / volume;
+			double densH = numbPoint[0] / (volume - hc.getHolesVolume());
+			double densSH = numbPoint[1] / (volume - hc.getHolesVolume());
 
-			String fileName="";
+			String fileName = "";
 			try {
-				if (fileName==""){
-					fileName=title+"_results.csv";
+				if (fileName == "") {
+					fileName = title + "_results.csv";
 				}
-				Path fileCSV = Files.createFile(Paths.get(IJ.getDirectory("current"),fileName)) ;
-				String line1="stackName, numberObject, numberObjectSter,volume, volumeHoles, denisty, density_Holes, density_Ster, density_Ster_Holes"  + System.lineSeparator() ;
-				String line2=title+","+OC.getNumberOfPoint()[0]+","+OC.getNumberOfPoint()[1]+ ","+volume+ ","+ hc.getHolesVolume()+ "," +density+","+densH+","+densS+","+densSH + System.lineSeparator() ;
-				Files.write(fileCSV,line1.getBytes(),StandardOpenOption.APPEND);	
-				Files.write(fileCSV,line2.getBytes(),StandardOpenOption.APPEND);
+				Path fileCSV = Files.createFile(Paths.get(IJ.getDirectory("current"), fileName));
+				String line1 = "stackName, numberObject, numberObjectSter,volume, volumeHoles, denisty, density_Holes, density_Ster, density_Ster_Holes"
+						+ System.lineSeparator();
+				String line2 = title + "," + OC.getNumberOfPoint()[0] + "," + OC.getNumberOfPoint()[1] + "," + volume
+						+ "," + hc.getHolesVolume() + "," + density + "," + densH + "," + densS + "," + densSH
+						+ System.lineSeparator();
+				Files.write(fileCSV, line1.getBytes(), StandardOpenOption.APPEND);
+				Files.write(fileCSV, line2.getBytes(), StandardOpenOption.APPEND);
 
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		//compute all the time 
-		long elapsedTimeMillis = System.currentTimeMillis()-start;
-		float elapsedTimeSec = elapsedTimeMillis/1000F;
+		// compute all the time
+		long elapsedTimeMillis = System.currentTimeMillis() - start;
+		float elapsedTimeSec = elapsedTimeMillis / 1000F;
 
-		IJ.log("DONE in :"+ elapsedTimeSec + " seconds");
+		IJ.log("DONE in :" + elapsedTimeSec + " seconds");
 	}
 
 	public void adjustmentValueChanged(AdjustmentEvent e) {
@@ -278,16 +336,16 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	}
 
 	public void focusLost(FocusEvent e) {
-		if (e.getSource().equals(values.elementAt(0))){
-			int val=(int) Tools.parseDouble(((TextField)values.elementAt(0)).getText());
-			val=(int) Math.min(max, Math.max(min, val));
-			((TextField)values.elementAt(0)).setText(""+val);
+		if (e.getSource().equals(values.elementAt(0))) {
+			int val = (int) Tools.parseDouble(((TextField) values.elementAt(0)).getText());
+			val = (int) Math.min(max, Math.max(min, val));
+			((TextField) values.elementAt(0)).setText("" + val);
 		}
 
-		if (e.getSource().equals(values.elementAt(1))){
-			int val=(int) Tools.parseDouble(((TextField)values.elementAt(1)).getText());
-			val=(int) Math.min(max, Math.max(min, val));
-			((TextField)values.elementAt(1)).setText(""+val);
+		if (e.getSource().equals(values.elementAt(1))) {
+			int val = (int) Tools.parseDouble(((TextField) values.elementAt(1)).getText());
+			val = (int) Math.min(max, Math.max(min, val));
+			((TextField) values.elementAt(1)).setText("" + val);
 		}
 
 		updateImg();
@@ -296,13 +354,10 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	public void focusGained(FocusEvent e) {
 	}
 
-	private void updateImg(){
-		thr=((Scrollbar)sliders.elementAt(0)).getValue();
-		imp.setSlice(((Scrollbar)sliders.elementAt(1)).getValue());
-		imp.resetDisplayRange();
-		ip.setThreshold(thr, max, ImageProcessor.RED_LUT);
+	private void updateImg() {
+		threshold = ((Scrollbar) sliders.elementAt(0)).getValue();
+		currentImage.setSlice(((Scrollbar) sliders.elementAt(1)).getValue());
+		currentImage.resetDisplayRange();
+		ip.setThreshold(threshold, max, ImageProcessor.RED_LUT);
 	}
-
-
-
 }
