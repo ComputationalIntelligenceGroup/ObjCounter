@@ -80,6 +80,7 @@ public class ConnectObjects {
 	double pi = Math.PI;
 	String method = "Spherical";
 	boolean autoWindow = false;
+	boolean isSilent = false;
 
 	/**
 	 * Constructor
@@ -104,7 +105,7 @@ public class ConnectObjects {
 	 *            exclude objects touching edges?
 	 */
 	public ConnectObjects(ImagePlus image, int thr, int slice, int min, int max, double fraction, int toll,
-			boolean fast, boolean excludeOnEdges) {
+			boolean fast, boolean excludeOnEdges, boolean isSilent) {
 		width = image.getWidth();
 		height = image.getHeight();
 		nbSlices = image.getNSlices();
@@ -120,7 +121,9 @@ public class ConnectObjects {
 		}
 		this.thr = thr;
 		this.slice = slice; // never used, future implementation?
-		IJ.log("thr" + thr);
+
+		if (!isSilent)
+			IJ.log("thr" + thr);
 		this.toll = toll;
 		minSize = min;
 		maxSize = max;
@@ -143,6 +146,8 @@ public class ConnectObjects {
 		objAnchor = new HashMap<Integer, Integer>();
 
 		overlay = image.getOverlay();
+
+		this.isSilent = isSilent;
 		// pathIm=Paths.get(IJ.getDirectory("current"));
 
 	}
@@ -470,7 +475,9 @@ public class ConnectObjects {
 	 * Connect objects in different/adjacent slices
 	 */
 	private void connectSlices() {
-		IJ.log("preliminary i found " + nbObj + " objects, now i will try to connect them");
+		if (!isSilent)
+			IJ.log("preliminary i found " + nbObj + " objects, now i will try to connect them");
+
 		Map<Integer, Map<Integer, Double>> intersections = new HashMap<Integer, Map<Integer, Double>>();
 		tempArray = objID.clone();
 		Map<Integer, Integer> oldCount = new HashMap<Integer, Integer>();
@@ -539,7 +546,9 @@ public class ConnectObjects {
 					objAnchor.put(i, -1);
 				}
 			}
-			IJ.showStatus("checking size of objects");
+
+			if (!isSilent)
+				IJ.showStatus("checking size of objects");
 		}
 
 		// join small objects if possible by expanding the remaining objects on
@@ -549,10 +558,14 @@ public class ConnectObjects {
 			if (objID[i] > 0) {
 				iterativeExpand(i, objID[i]);
 			}
-			IJ.showStatus("joining small objects");
+
+			if (!isSilent)
+				IJ.showStatus("joining small objects");
 		}
 		nbObj = newCurrID;
-		IJ.log("I found " + nbObj + " objects");
+
+		if (!isSilent)
+			IJ.log("I found " + nbObj + " objects");
 		objectLinked = true;
 
 		if (this.excludeOnEdges) {
@@ -574,7 +587,9 @@ public class ConnectObjects {
 					| ((i - width) / (width * height)) != (i / (width * height)))) {
 				iterativeSubstitution(objAnchor.get(objID[i]), 0, objID[i]);
 			}
-			IJ.showStatus("deleting objects on Edges");
+
+			if (!isSilent)
+				IJ.showStatus("deleting objects on Edges");
 		}
 
 	}
@@ -591,7 +606,9 @@ public class ConnectObjects {
 					| ((i - width) / (width * height)) != (i / (width * height)))) {
 				IDonEdge.put(objID[i], 1);
 			}
-			IJ.showStatus("marking objects on Edges");
+
+			if (!isSilent)
+				IJ.showStatus("marking objects on Edges");
 		}
 
 	}
@@ -898,7 +915,9 @@ public class ConnectObjects {
 		ImagePlus img = NewImage.createImage(title, width, height, nbSlices, imgDepth, 1);
 
 		for (int z = 1; z <= nbSlices; z++) {
-			IJ.showStatus("Creating the image...");
+
+			if (!isSilent)
+				IJ.showStatus("Creating the image...");
 			img.setSlice(z);
 			ImageProcessor ip = img.getProcessor();
 			for (int y = 0; y < height; y++) {
@@ -917,12 +936,15 @@ public class ConnectObjects {
 				}
 			}
 		}
-		IJ.showStatus("");
+
+		if (!isSilent)
+			IJ.showStatus("");
 
 		index = 0;
 		if (drawNb && cenArray != null) {
 			for (int z = 1; z <= nbSlices; z++) {
-				IJ.showStatus("Numbering objects...");
+				if (!isSilent)
+					IJ.showStatus("Numbering objects...");
 				img.setSlice(z);
 				ImageProcessor ip = img.getProcessor();
 				ip.setValue(Math.pow(2, imgDepth));
@@ -940,7 +962,8 @@ public class ConnectObjects {
 				}
 			}
 		}
-		IJ.showStatus("");
+		if (!isSilent)
+			IJ.showStatus("");
 
 		img.setCalibration(cal);
 		img.setDisplayRange(min, max);
@@ -954,7 +977,8 @@ public class ConnectObjects {
 		if (!getCentroid)
 			populateCentroid();
 		if (overlay == null) {
-			IJ.log("no overlay in the image, impossible to validate");
+			if (!isSilent)
+				IJ.log("no overlay in the image, impossible to validate");
 			return;
 		}
 		Map<Integer, Roi> polys = new HashMap<Integer, Roi>();
@@ -993,19 +1017,24 @@ public class ConnectObjects {
 		}
 		for (int j = 1; j <= nbRoi; j++) {
 			if (inside[j - 1] > 0) {
-				IJ.log("Roi " + polys.get(j).getName() + " contains " + inside[j - 1] + " detected objects");
+				if (!isSilent)
+					IJ.log("Roi " + polys.get(j).getName() + " contains " + inside[j - 1] + " detected objects");
 			}
 		}
-		IJ.log("ROIs contains " + num + " overlay points ");
-		IJ.log(" " + indx + " object  of " + num + " has been corectly associated");
-		IJ.log(" " + totInside + " detected objects with centroid  inside the ROI(s)");
+		if (!isSilent) {
+			IJ.log("ROIs contains " + num + " overlay points ");
+			IJ.log(" " + indx + " object  of " + num + " has been corectly associated");
+			IJ.log(" " + totInside + " detected objects with centroid  inside the ROI(s)");
+		}
 		double sensitivity = ((double) indx) / num;
 		double precision = ((double) indx) / totInside;
 		double f1Score = ((double) 2 * indx) / (num + totInside);
-		IJ.log("Recall = " + sensitivity);
-		IJ.log("Precision = " + precision);
-		IJ.log("F1 score = " + f1Score);
-		IJ.log("relative naive error = " + (((double) totInside - num)) / num);
+		if (!isSilent) {
+			IJ.log("Recall = " + sensitivity);
+			IJ.log("Precision = " + precision);
+			IJ.log("F1 score = " + f1Score);
+			IJ.log("relative naive error = " + (((double) totInside - num)) / num);
+		}
 	}
 
 	/**
@@ -1089,6 +1118,7 @@ public class ConnectObjects {
 		if (!getCentroid)
 			populateCentroid();
 		try {
+			Files.deleteIfExists(Paths.get(outputPath));
 			Path fileCSV = Files.createFile(Paths.get(outputPath));
 			String line;
 			for (int i = 0; i < nbObj; i++) {
@@ -1098,8 +1128,10 @@ public class ConnectObjects {
 				Files.write(fileCSV, line.getBytes(), StandardOpenOption.APPEND);
 			}
 		} catch (IOException e) {
-			IJ.error("Error writting CSV file");
-			e.printStackTrace();
+			if (!isSilent) {
+				IJ.error("Error writting CSV file");
+				e.printStackTrace();
+			}
 		}
 
 	}

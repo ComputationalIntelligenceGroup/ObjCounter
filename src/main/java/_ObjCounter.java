@@ -98,12 +98,14 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		currentImage = WindowManager.getCurrentImage();
 
 		if (currentImage == null) {
-			IJ.error("You need to open an image first.");
+			if (!isSilent)
+				IJ.error("You need to open an image first.");
 			return;
 		}
 
 		if (currentImage.getBitDepth() > 16) {
-			IJ.error("ObjectCounter only works on 8-bits or 16-bits image.");
+			if (!isSilent)
+				IJ.error("ObjectCounter only works on 8-bits or 16-bits image.");
 			return;
 		}
 
@@ -144,11 +146,13 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			if (!(imgRedir.getWidth() == this.width && imgRedir.getHeight() == this.height
 					&& imgRedir.getNSlices() == this.nbSlices) || imgRedir.getBitDepth() > 16) {
 				redirect = false;
-				IJ.log("Redirection canceled: images should have the same size and a depth of 8- or 16-bits.");
+				if (!isSilent)
+					IJ.log("Redirection canceled: images should have the same size and a depth of 8- or 16-bits.");
 			}
 			if (imgRedir.getTitle().equals(this.title)) {
 				redirect = false;
-				IJ.log("Redirection canceled: both images have the same title.");
+				if (!isSilent)
+					IJ.log("Redirection canceled: both images have the same title.");
 			}
 		}
 
@@ -177,7 +181,8 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 				exportResults = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_RESULTS, "false"));
 				validate = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_VALIDATE, "false"));
 			} catch (Exception ex) {
-				IJ.error("Any param format is incorrect.");
+				if (!isSilent)
+					IJ.error("Any param format is incorrect.");
 				return;
 			}
 		} else {
@@ -247,10 +252,11 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		ip.resetThreshold();
 		currentImage.updateAndDraw();
 
-		IJ.log("STARTING");
+		if (!isSilent)
+			IJ.log("STARTING");
 		long start = System.currentTimeMillis();
 		ConnectObjects OC = new ConnectObjects(currentImage, threshold, slice, minSize, maxSize, fraction, tolerance,
-				fast, excludeOnEdges);
+				fast, excludeOnEdges, isSilent);
 
 		dotSize = (int) Prefs.get("3D-OC-Options_dotSize.double", 5);
 		fontSize = (int) Prefs.get("3D-OC-Options_fontSize.double", 10);
@@ -328,7 +334,8 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		long elapsedTimeMillis = System.currentTimeMillis() - start;
 		float elapsedTimeSec = elapsedTimeMillis / 1000F;
 
-		IJ.log("DONE in :" + elapsedTimeSec + " seconds");
+		if (!isSilent)
+			IJ.log("DONE in :" + elapsedTimeSec + " seconds");
 	}
 
 	public void adjustmentValueChanged(AdjustmentEvent e) {
