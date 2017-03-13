@@ -80,8 +80,8 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	private double min, max;
 	private String title, redirectTo;
 	private int threshold, slice, minSize, maxSize, dotSize, fontSize;
-	private boolean excludeOnEdges, exportObjects, showCentroids, showCOM, showNb, whiteNb, redirect, fast,
-			exportResults;
+	private boolean excludeOnEdges, exportObjects = false, showCentroids, showCOM, showNb, whiteNb, redirect, fast,
+			exportResults = false;
 	private Vector sliders, values;
 	private double fraction = 0.5;
 	private boolean validate = false;
@@ -89,11 +89,19 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	private boolean exportPoints = false;
 
 	public void run(String arg) {
+		
 		if (IJ.versionLessThan("1.39i"))
 			return;
-
+		
+        boolean isSilent = false;
 		String macroOptions = Macro.getOptions();
-		boolean isSilent = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_SILENT, "false"));
+		try{
+			isSilent = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_SILENT, "false"));
+		}catch(Exception ex){
+			IJ.log("No-macro mode");
+		}
+		
+
 
 		currentImage = WindowManager.getCurrentImage();
 
@@ -160,6 +168,10 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			Prefs.set("3D-OC-Options_redirectTo.string", "none");
 			Prefs.set("3D-OC-Options_showMaskedImg.boolean", false);
 		}
+		
+	    String outputPathObjects = null;
+		String outputPathPoints = null;
+
 
 		if (isSilent) {
 			try {
@@ -180,6 +192,8 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 				exportPoints = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_POINTS, "false"));
 				exportResults = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_RESULTS, "false"));
 				validate = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_VALIDATE, "false"));
+				outputPathObjects = Macro.getValue(macroOptions, PARAM_OUTPUT_OBJECTS, null);
+				outputPathPoints = Macro.getValue(macroOptions, PARAM_OUTPUT_POINTS, null);
 			} catch (Exception ex) {
 				if (!isSilent)
 					IJ.error("Any param format is incorrect.");
@@ -264,9 +278,8 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		whiteNb = Prefs.get("3D-OC-Options_whiteNb.boolean", true);
 
 		if (exportPoints) {
-			String outputPath = Macro.getValue(macroOptions, PARAM_OUTPUT_POINTS, null);
-			if (outputPath != null) {
-				OC.writeCSV(outputPath);
+			if (outputPathPoints != null) {
+				OC.writeCSV(outputPathPoints);
 			} else {
 				OC.getResultsTable().show("Centroids");
 			}
@@ -274,9 +287,9 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		if (exportObjects) {
 			ImagePlus objectMap = OC.getObjMap(showNb, fontSize);
 			IJ.run(objectMap, "3-3-2 RGB", null);
-			String outputPath = Macro.getValue(macroOptions, PARAM_OUTPUT_OBJECTS, null);
-			if (outputPath != null) {
-				IJ.save(objectMap, outputPath);
+			
+			if (outputPathObjects != null) {
+				IJ.save(objectMap, outputPathObjects);
 			} else {
 				objectMap.show();
 			}

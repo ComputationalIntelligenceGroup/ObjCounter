@@ -74,7 +74,7 @@ public class ConnectObjects {
 	// Path pathIm;
 
 	Map<Integer, Integer> IDcount, objAnchor, IDonEdge;
-	Map<Integer, double[]> IDrange;
+	Map<Integer, Double> IDmass;
 
 	boolean objectLinked = false, sliceProcessed = false, getCentreOfMass = false, getCentroid = false;
 	double pi = Math.PI;
@@ -140,15 +140,14 @@ public class ConnectObjects {
 		IDcount = new HashMap<Integer, Integer>();
 		IDonEdge = new HashMap<Integer, Integer>();
 		IDcount.put(0, length);
-		IDrange = new HashMap<Integer, double[]>();
+		IDmass = new HashMap<Integer, Double>();
+		IDmass.put(0, 0.0);
 
-		IDrange.put(0, new double[] { 0, 0, 0, 0, 0 });
 		objAnchor = new HashMap<Integer, Integer>();
 
 		overlay = image.getOverlay();
 
 		this.isSilent = isSilent;
-		// pathIm=Paths.get(IJ.getDirectory("current"));
 
 	}
 
@@ -173,13 +172,16 @@ public class ConnectObjects {
 			tempArray[i] = Math.max(maximum, imgArray[i]);
 			strenght = imgArray[i];
 			maximum = Math.max(imgArray[i], maximum);
+			
+			//update IDcount and ID mass for old obj
 			IDcount.put(objID[i], IDcount.get(objID[i]) - 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) - imgArray[i]);
+			//set objID
 			objID[i] = value;
+			//update IDcount and ID mass for new obj
 			IDcount.put(value, IDcount.get(value) + 1);
-			IDrange.put(value,
-					new double[] { Math.min(IDrange.get(value)[0], imgArray[i]),
-							Math.max(IDrange.get(value)[1], imgArray[i]), IDrange.get(value)[2] + imgArray[i],
-							IDrange.get(value)[3] + Math.pow(imgArray[i], 2), IDrange.get(value)[4] + 1 });
+			IDmass.put(value, IDmass.get(value) + imgArray[i]);
+			
 			if (((i + 1) % width) != 0) {
 				// propagate to the right
 				propagate(i + 1, value, sliceConnections, strenght, maximum);
@@ -250,9 +252,14 @@ public class ConnectObjects {
 		if (objID[i] != value && imgArray[i] > 0 && strenght + toll >= imgArray[i] && strenght + toll >= tempArray[i]) {
 			tempArray[i] = strenght + toll;
 			strenght = imgArray[i];
+			
+			//update IDcount and ID mass and set obj id
 			IDcount.put(objID[i], IDcount.get(objID[i]) - 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) - imgArray[i]);
 			objID[i] = value;
 			IDcount.put(value, IDcount.get(value) + 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) + imgArray[i]);
+			
 			if (((i + 1) % width) != 0) {
 
 				// propagate to the right
@@ -322,9 +329,15 @@ public class ConnectObjects {
 		if (objID[i] == oldvalue && imgArray[i] > 0) {
 			// no need for checking on borders because we suppose the ID we are
 			// going to substitute are correct
+			
+			//update IDcount and ID mass and set obj id
 			IDcount.put(oldvalue, IDcount.get(oldvalue) - 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) - imgArray[i]);
 			objID[i] = newvalue;
 			IDcount.put(newvalue, IDcount.get(newvalue) + 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) + imgArray[i]);
+			
+			//propagate to adjacient pixels
 			iterativeSubstitution(i + 1, newvalue, oldvalue);
 			iterativeSubstitution(i - 1, newvalue, oldvalue);
 			iterativeSubstitution(i + width, newvalue, oldvalue);
@@ -415,6 +428,7 @@ public class ConnectObjects {
 					// sufficient since the objects are always connected
 					objAnchor.put(id, i);
 					IDcount.put(id, 0);
+					IDmass.put(id, 0.0);
 					// from the anchor point I start propagating the id
 					propagateFast(i, id, imgArray[i]);
 				}
@@ -439,7 +453,7 @@ public class ConnectObjects {
 					// sufficient since the objects are always connected
 					objAnchor.put(id, i);
 					IDcount.put(id, 0);
-					IDrange.put(id, new double[] { 255, 0, 0, 0, 0 });
+					IDmass.put(id, 0.0);
 					// from the anchor point I start propagating the id
 					propagate(i, id, propagateSlice, imgArray[i], imgArray[i]);
 				}
@@ -451,25 +465,6 @@ public class ConnectObjects {
 		sliceProcessed = true;
 	}
 
-	/**
-	 * Computes pixel similarity using something like Bhattacharyya
-	 * coefficient/angle
-	 * 
-	 * @param i
-	 *            index of the first pixel
-	 * @param j
-	 *            index of the second pixel
-	 * @return
-	 */
-	private double pixelSimilarity(int i, int j) {
-		double a, b;
-		double[] range = IDrange.get(tempArray[i]);
-		a = (imgArray[i]) / range[2]; // probability
-		range = IDrange.get(tempArray[j]);
-		b = (imgArray[j]) / range[2]; // probability
-		return (Math.sqrt(a * b)); // using something like Bhattacharyya
-									// coefficient/angle
-	}
 
 	/**
 	 * Connect objects in different/adjacent slices
@@ -480,34 +475,37 @@ public class ConnectObjects {
 
 		Map<Integer, Map<Integer, Double>> intersections = new HashMap<Integer, Map<Integer, Double>>();
 		tempArray = objID.clone();
-		Map<Integer, Integer> oldCount = new HashMap<Integer, Integer>();
-		oldCount.putAll(IDcount);
+		Map<Integer, Double> oldIDmass = new HashMap<Integer, Double>();
+		oldIDmass.putAll(IDmass);
 		Map<Integer, Double> temp;
 		int m = width * height;
 		for (int i = 0; i < length; i++) {
 			if ((objID[i] != 0)) {
 				if (i + m < length) {
 					if (objID[i + m] != 0) {
+						//extract the normalized (wrt objects)  intensities
+						double a =  (imgArray[i]) / oldIDmass.get(tempArray[i]);
+						double b = (imgArray[i+m]) / oldIDmass.get(tempArray[i+m]);
 						if (intersections.containsKey(tempArray[i])) {
 							if (intersections.get(tempArray[i]).containsKey(tempArray[i + m])) {
 								intersections.get(tempArray[i]).put(tempArray[i + m],
 										intersections.get(tempArray[i]).get(tempArray[i + m])
-												+ pixelSimilarity(i, i + m));
+										+ Math.sqrt(a * b));
 							} else
-								intersections.get(tempArray[i]).put(tempArray[i + m], pixelSimilarity(i, i + m));
+								intersections.get(tempArray[i]).put(tempArray[i + m], Math.sqrt(a * b));
 						} else {
 							temp = new HashMap<Integer, Double>(1);
-							temp.put(tempArray[i + m], pixelSimilarity(i, i + m));
+							temp.put(tempArray[i + m], Math.sqrt(a * b));
 							intersections.put(tempArray[i], temp);
 						}
-						if ((intersections.get(tempArray[i]).get(tempArray[i + m])) > fraction) { // *oldCount.get(oldID[i])
+						if ((intersections.get(tempArray[i]).get(tempArray[i + m])) > fraction) { 
 							iterativeSubstitution(i + m, objID[i], objID[i + m]);
 						}
 					}
 				}
 				if (i - m >= 0) {
 					if (objID[i - m] != 0) {
-						if ((intersections.get(tempArray[i - m]).get(tempArray[i])) > fraction) { // *oldCount.get(oldID[i])
+						if ((intersections.get(tempArray[i - m]).get(tempArray[i])) > fraction) {
 							iterativeSubstitution(i - m, objID[i], objID[i - m]);
 						}
 					}
@@ -538,8 +536,8 @@ public class ConnectObjects {
 				newCurrID++;
 				iterativeSubstitution(objAnchor.get(i), newCurrID, i);
 				objAnchor.put(newCurrID, objAnchor.get(i)); // substitute the
-															// anchor points for
-															// the given object
+				// anchor points for
+				// the given object
 			} else {
 				if ((IDcount.get(i) != 0)) {
 					iterativeSubstitution(objAnchor.get(i), 0, i);
