@@ -366,8 +366,11 @@ public class ConnectObjects {
 		}
 		if ((tempArray[i] == value || objID[i] == 0) && imgArray[i] > 0) {
 			tempArray[i] = -1;
+			IDcount.put(objID[i], IDcount.get(objID[i]) - 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) - imgArray[i]);
 			objID[i] = value;
-
+			IDcount.put(objID[i], IDcount.get(objID[i]) + 1);
+			IDmass.put(objID[i], IDmass.get(objID[i]) + imgArray[i]);
 			if (((i + 1) % width) != 0) {
 
 				// propagate to the right
@@ -522,7 +525,7 @@ public class ConnectObjects {
 
 		if (!fast) {
 			if (!sliceProcessed)
-				processSlices();
+			processSlices();
 			connectSlices();
 		} else {
 			if (!sliceProcessed)
