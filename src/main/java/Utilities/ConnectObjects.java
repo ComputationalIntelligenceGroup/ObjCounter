@@ -81,6 +81,7 @@ public class ConnectObjects {
 	String method = "Spherical";
 	boolean autoWindow = false;
 	boolean isSilent = false;
+	private int[] surface;
 
 	/**
 	 * Constructor
@@ -743,7 +744,7 @@ public class ConnectObjects {
 		if (!objectLinked)
 			linkObjects();
 		centroid = new float[nbObj][3];
-		float[] totalMass = new float[nbObj];
+		surface = new int[nbObj];
 		for (int z = 1; z <= nbSlices; z++) {
 			for (int x = 0; x < width; x++) {
 				for (int y = 0; y < height; y++) {
@@ -752,17 +753,76 @@ public class ConnectObjects {
 						centroid[objID[indx] - 1][0] += x;
 						centroid[objID[indx] - 1][1] += y;
 						centroid[objID[indx] - 1][2] += z;
-						totalMass[objID[indx] - 1] += 1;
+						surface[objID[indx] - 1] += calculateNumFacesOnSurface(indx);
 					}
 				}
 			}
 		}
 		for (int i = 0; i < nbObj; i++) {
-			centroid[i][0] = centroid[i][0] / totalMass[i];
-			centroid[i][1] = centroid[i][1] / totalMass[i];
-			centroid[i][2] = centroid[i][2] / totalMass[i];
+			centroid[i][0] = centroid[i][0] / IDcount.get(i + 1);
+			centroid[i][1] = centroid[i][1] / IDcount.get(i + 1);
+			centroid[i][2] = centroid[i][2] / IDcount.get(i + 1);
 		}
 		getCentroid = true;
+	}
+	
+	/**
+	 * Calculates the number of faces of a voxel on the surface of the object.
+	 * A voxel has six faces, up, down, left, right, top and bottom.
+	 * Note: If a face of the voxel is on any boundary of the image, that face
+	 * is also considered to be on the surface.
+	 * 
+	 * This is used to compute an object surface measurement.
+	 * @param index the index of the voxel in the objID array.
+	 * @return the number of faces.
+	 */
+	private int calculateNumFacesOnSurface(int index){
+		int numFaces = 0;
+		
+		boolean canMoveRight = (index + 1) <= length && ((index + 1) % width) != 0;
+		boolean canMoveLeft = (index - 1) >= 0 && (index % width) != 0;
+		boolean canMoveUp = (index - width) >= 0 && (index - width) / (width * height) == index / (width * height);
+		boolean canMoveDown = (index + width) <= length && (index + width) / (width * height) == index / (width * height);
+		boolean canMoveTop = index - (width * height) >= 0;
+		boolean canMoveBottom = index + (width * height) <= length;
+		
+		if (canMoveRight) {
+			if(objID[index] != objID[index + 1]) numFaces++;
+		}else{
+			numFaces++;
+		}
+		
+		if (canMoveLeft) {
+			if(objID[index] != objID[index - 1]) numFaces++;
+		}else{
+			numFaces++;
+		}
+		
+		if (canMoveUp) {
+			if(objID[index] != objID[index - width]) numFaces++;
+		}else{
+			numFaces++;
+		}
+
+		if (canMoveDown) {
+			if(objID[index] != objID[index + width]) numFaces++;
+		}else{
+			numFaces++;
+		}
+		
+		if (canMoveTop) {
+			if(objID[index] != objID[index - (width * height)]) numFaces++;
+		}else{
+			numFaces++;
+		}
+		
+		if (canMoveBottom) {
+			if(objID[index] != objID[index + (width * height)]) numFaces++;
+		}else{
+			numFaces++;
+		}
+		
+		return numFaces;
 	}
 
 	/**
@@ -1089,6 +1149,8 @@ public class ConnectObjects {
 			rt.setValue(2, i, centroid[i][1]);
 			rt.setValue(3, i, centroid[i][2]);
 			rt.setValue(4, i, IDonEdge.get(i + 1));
+			rt.setValue(5, i, IDcount.get(i + 1));
+			rt.setValue(6, i, surface[i]);
 		}
 		return rt;
 	}
@@ -1125,7 +1187,7 @@ public class ConnectObjects {
 			for (int i = 0; i < nbObj; i++) {
 				line = Float.toString(centroid[i][0]) + "," + Float.toString(centroid[i][1]) + ","
 						+ Float.toString(centroid[i][2]) + "," + Integer.toString(IDonEdge.get(i + 1))
-						+ System.lineSeparator();
+						+ "," + Integer.toString(IDcount.get(i+1)) + "," + surface[i] +System.lineSeparator();
 				Files.write(fileCSV, line.getBytes(), StandardOpenOption.APPEND);
 			}
 		} catch (IOException e) {
