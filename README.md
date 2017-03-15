@@ -1,9 +1,9 @@
 
 # ObjCounter plugin
 
-###author: Gherardo Varando, gherardo.varando@gmail.com
+### author: Gherardo Varando, gherardo.varando@gmail.com
 
-####What it is?
+#### What it is?
 
 ObjCounter is an ImageJ plugin to segment connected objects in stack of iamges. The plugin detects the objects, and it can create stacks with the labelled objects, stacks with centroid or center of masses of the detected objects, and it can exports the results to csv format. Moreover if an overlay (with single dots labelling every objects) is present than it is possible to evaluate the segmentation.
 
