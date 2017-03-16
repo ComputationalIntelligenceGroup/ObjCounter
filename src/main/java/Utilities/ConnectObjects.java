@@ -779,12 +779,12 @@ public class ConnectObjects {
 	private int calculateNumFacesOnSurface(int index){
 		int numFaces = 0;
 		
-		boolean canMoveRight = (index + 1) <= length && ((index + 1) % width) != 0;
+		boolean canMoveRight = (index + 1) < length && ((index + 1) % width) != 0;
 		boolean canMoveLeft = (index - 1) >= 0 && (index % width) != 0;
 		boolean canMoveUp = (index - width) >= 0 && (index - width) / (width * height) == index / (width * height);
-		boolean canMoveDown = (index + width) <= length && (index + width) / (width * height) == index / (width * height);
+		boolean canMoveDown = (index + width) < length && (index + width) / (width * height) == index / (width * height);
 		boolean canMoveTop = index - (width * height) >= 0;
-		boolean canMoveBottom = index + (width * height) <= length;
+		boolean canMoveBottom = index + (width * height) < length;
 		
 		if (canMoveRight) {
 			if(objID[index] != objID[index + 1]) numFaces++;

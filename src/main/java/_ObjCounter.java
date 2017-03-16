@@ -171,15 +171,14 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		
 	    String outputPathObjects = null;
 		String outputPathPoints = null;
-
-
-		if (isSilent) {
+		if (macroOptions != null) {
 			try {
 				threshold = Integer.parseInt(Macro.getValue(macroOptions, PARAM_THRESHOLD, String.valueOf(threshold)));
 				slice = Integer.parseInt(Macro.getValue(macroOptions, PARAM_SLICE, String.valueOf(nbSlices / 2)));
 				fast = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_FAST, "false"));
-				minSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MIN, "0"));
-				maxSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MAX, "0"));
+				minSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MIN, String.valueOf(minSize)));
+				IJ.log(""+minSize);
+				maxSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MAX, String.valueOf(maxSize) ));
 				fraction = Double.parseDouble(Macro.getValue(macroOptions, PARAM_FRACTION, "0.5"));
 				tolerance = Integer.parseInt(Macro.getValue(macroOptions, PARAM_TOLERANCE, "0"));
 				showCentroids = Boolean.parseBoolean(
@@ -201,17 +200,14 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			}
 		} else {
 			GenericDialog gd = new GenericDialog("ObjCounter v0.0.1 (beta)");
-
 			gd.addSlider("Threshold", min, max, threshold);
 			gd.addSlider("Slice", 1, nbSlices, nbSlices / 2);
-
 			sliders = gd.getSliders();
 			((Scrollbar) sliders.elementAt(0)).addAdjustmentListener(this);
 			((Scrollbar) sliders.elementAt(1)).addAdjustmentListener(this);
 			values = gd.getNumericFields();
 			((TextField) values.elementAt(0)).addFocusListener(this);
 			((TextField) values.elementAt(1)).addFocusListener(this);
-
 			gd.addCheckbox("fast algorithm", false);
 			gd.addMessage("Size filter: ");
 			gd.addNumericField("Min.", minSize, 0);
