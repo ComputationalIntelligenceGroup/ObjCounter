@@ -80,7 +80,7 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	private double min, max;
 	private String title, redirectTo;
 	private int threshold, slice, minSize, maxSize, dotSize, fontSize;
-	private boolean excludeOnEdges, exportObjects = false, showCentroids, showCOM, showNb, whiteNb, redirect, fast,
+	private boolean  exportObjects = false, showCentroids, showCOM, showNb, whiteNb, redirect, fast,
 			exportResults = false;
 	private Vector sliders, values;
 	private double fraction = 0.5;
@@ -141,7 +141,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 
 		minSize = (int) Prefs.get("3D-OC_minSize.double", 10);
 		maxSize = length;
-		excludeOnEdges = Prefs.get("3D-OC_excludeOnEdges.boolean", true);
 		exportObjects = Prefs.get("3D-OC_showObj.boolean", true);
 		showCentroids = Prefs.get("3D-OC_showCentro.boolean", true);
 		showCOM = Prefs.get("3D-OC_showCOM.boolean", true);
@@ -214,7 +213,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			gd.addNumericField("Max.", maxSize, 0);
 			gd.addNumericField("Fraction for connections ", 0.5, 3);
 			gd.addNumericField("tollerance for propagation", 0, 0);
-			gd.addCheckbox("Exclude_objects_on_edges", excludeOnEdges);
 			gd.addMessage("Maps to show: ");
 			gd.addCheckbox("Objects", exportObjects);
 			gd.addCheckbox("Centroids", showCentroids);
@@ -239,7 +237,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			maxSize = (int) gd.getNextNumber();
 			fraction = (double) gd.getNextNumber();
 			tolerance = (int) gd.getNextNumber();
-			excludeOnEdges = gd.getNextBoolean();
 			exportObjects = gd.getNextBoolean();
 			showCentroids = gd.getNextBoolean();
 			showCOM = gd.getNextBoolean();
@@ -250,7 +247,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		}
 
 		Prefs.set("3D-OC_minSize.double", minSize);
-		Prefs.set("3D-OC_excludeOnEdges.boolean", excludeOnEdges);
 		Prefs.set("3D-OC_showObj.boolean", exportObjects);
 		Prefs.set("3D-OC_showCentro.boolean", showCentroids);
 		Prefs.set("3D-OC_showCOM.boolean", showCOM);
@@ -266,7 +262,7 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			IJ.log("STARTING");
 		long start = System.currentTimeMillis();
 		ConnectObjects OC = new ConnectObjects(currentImage, threshold, slice, minSize, maxSize, fraction, tolerance,
-				fast, excludeOnEdges, isSilent);
+				fast, isSilent);
 
 		dotSize = (int) Prefs.get("3D-OC-Options_dotSize.double", 5);
 		fontSize = (int) Prefs.get("3D-OC-Options_fontSize.double", 10);

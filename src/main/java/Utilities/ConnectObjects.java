@@ -70,7 +70,6 @@ public class ConnectObjects {
 	double large = 1000;
 	Overlay overlay;
 	int toll = 0;
-	boolean excludeOnEdges = false;
 	// Path pathIm;
 
 	Map<Integer, Integer> IDcount, objAnchor, IDonEdge;
@@ -102,11 +101,9 @@ public class ConnectObjects {
 	 *            the slice used
 	 * @param fast
 	 *            use the fast version?
-	 * @param excludeOnEdges
-	 *            exclude objects touching edges?
 	 */
 	public ConnectObjects(ImagePlus image, int thr, int slice, int min, int max, double fraction, int toll,
-			boolean fast, boolean excludeOnEdges, boolean isSilent) {
+			boolean fast, boolean isSilent) {
 		width = image.getWidth();
 		height = image.getHeight();
 		nbSlices = image.getNSlices();
@@ -129,7 +126,6 @@ public class ConnectObjects {
 		minSize = min;
 		maxSize = max;
 		this.fraction = fraction;
-		this.excludeOnEdges = excludeOnEdges;
 		if (depth != 8 && depth != 16)
 			throw new IllegalArgumentException("ConnectObjects expects 8-bits and 16-bits images only");
 
@@ -570,9 +566,6 @@ public class ConnectObjects {
 			IJ.log("I found " + nbObj + " objects");
 		objectLinked = true;
 
-		if (this.excludeOnEdges) {
-			deleteOnEdges();
-		}
 
 		markOnEdges();
 
