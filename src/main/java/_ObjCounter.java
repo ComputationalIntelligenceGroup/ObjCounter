@@ -239,9 +239,9 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		if (outputPathPoints != null) {
 				OC.writeCSV(outputPathPoints);
 		}
-		if (showObjects || outputPathObjects != null) {
+		if (showObjects || (outputPathObjects != null)) {
 			ImagePlus objectMap = OC.getObjMap(showNb, fontSize);
-			IJ.run(objectMap, "glasbey inverted", null);
+			IJ.run(objectMap, "3-3-2 RGB", null);
 			if (outputPathObjects != null) {
 				IJ.save(objectMap, outputPathObjects);
 			} else {
@@ -250,12 +250,12 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		}
 		if (showCentroids) {
 			OC.getCentroidMap(showNb, whiteNb, dotSize, fontSize).show();
-			IJ.run("glasbey inverted");
+			IJ.run("3-3-2 RGB");
 			OC.getResultsTable().show("Centroids");
 		}
 		if (showCOM) {
 			OC.getCentreOfMassMap(showNb, whiteNb, dotSize, fontSize).show();
-			IJ.run("glasbey inverted");
+			IJ.run("3-3-2 RGB");
 		}
 		if (showPointsMap) {
 			OC.computePointsMap().show();
