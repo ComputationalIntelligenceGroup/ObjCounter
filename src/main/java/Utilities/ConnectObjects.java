@@ -120,8 +120,6 @@ public class ConnectObjects {
 		this.thr = thr;
 		this.slice = slice; // never used, future implementation?
 
-		if (!isSilent)
-			IJ.log("thr" + thr);
 		this.toll = toll;
 		minSize = min;
 		maxSize = max;
@@ -1124,26 +1122,20 @@ public class ConnectObjects {
 		return densityArray;
 	}
 
-	/**
-	 * write csv with centroid
-	 * 
-	 * @param fileName
-	 *            file name
-	 * @param path
-	 *            path of where write the file
-	 */
+
 	public ResultsTable getResultsTable() {
 		if (!getCentroid)
 			populateCentroid();
 		ResultsTable rt = new ResultsTable();
 		rt.setPrecision(5);
 		for (int i = 0; i < nbObj; i++) {
-			rt.setValue(1, i, centroid[i][0]);
-			rt.setValue(2, i, centroid[i][1]);
-			rt.setValue(3, i, centroid[i][2]);
-			rt.setValue(4, i, IDonEdge.get(i + 1));
-			rt.setValue(5, i, IDcount.get(i + 1));
-			rt.setValue(6, i, surface[i]);
+			rt.incrementCounter();
+			rt.addValue("X", centroid[i][0]);
+			rt.addValue("Y", centroid[i][1]);
+			rt.addValue("Z", centroid[i][2]);
+			rt.addValue("edge CF", IDonEdge.get(i + 1));
+			rt.addValue("volume", IDcount.get(i + 1));
+			rt.addValue("surface", surface[i]);
 		}
 		return rt;
 	}

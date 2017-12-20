@@ -14,7 +14,6 @@
 
 	<groupId>sc.fiji</groupId>
 	<artifactId>_ObjCounter</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 
 	<name>plugins/_ObjCounter.jar</name>
 	<description>A plugin derived from 3DObjectCounter, for 3D connection, counting and spatial density estimation.
@@ -68,4 +67,5 @@
 		</plugins>
 	</build>
 
+	<version>1.0.0</version>
 </project>

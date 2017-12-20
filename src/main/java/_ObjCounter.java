@@ -24,14 +24,12 @@
  */
 
 import Utilities.ConnectObjects;
-import Utilities.holes_detection;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
-import ij.measure.Calibration;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
 import ij.util.Tools;
@@ -42,11 +40,6 @@ import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Vector;
 
 /**
@@ -64,12 +57,10 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	private static final String PARAM_MAX = "max";
 	private static final String PARAM_FRACTION = "fraction";
 	private static final String PARAM_TOLERANCE = "tolerance";
-	private static final String PARAM_SHOW_CENTROIDS = "show_centroids";
-	private static final String PARAM_SHOW_COM = "show_com";
-	private static final String PARAM_COMPUTE_POINTS_MAP = "compute_points_map";
-	private static final String PARAM_EXPORT_OBJECTS = "export_objects";
-	private static final String PARAM_EXPORT_POINTS = "export_points";
-	private static final String PARAM_EXPORT_RESULTS = "export_results";
+	private static final String PARAM_SHOW_CENTROIDS = "centroids";
+	private static final String PARAM_SHOW_COM = "com";
+	private static final String PARAM_COMPUTE_POINTS_MAP = "points_map";
+	private static final String PARAM_SHOW_OBJECTS = "objects";
 	private static final String PARAM_VALIDATE = "validate";
 	private static final String PARAM_OUTPUT_OBJECTS = "output_objects";
 	private static final String PARAM_OUTPUT_POINTS = "output_points";
@@ -78,16 +69,12 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 	private ImageProcessor ip;
 	private int width, height, nbSlices, length, tolerance;
 	private double min, max;
-	private String title, redirectTo;
 	private int threshold, slice, minSize, maxSize, dotSize, fontSize;
-	private boolean  exportObjects = false, showCentroids, showCOM, showNb, whiteNb, redirect, fast,
-			exportResults = false;
+	private boolean showObjects=false, showCentroids=false, showCOM=false, showNb=false, whiteNb=false, fast=false;
 	private Vector sliders, values;
 	private double fraction = 0.5;
 	private boolean validate = false;
-	private boolean computePointsMap = false;
-	private boolean exportPoints = false;
-
+	private boolean showPointsMap = false;
 	public void run(String arg) {
 		
 		if (IJ.versionLessThan("1.39i"))
@@ -98,11 +85,9 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		try{
 			isSilent = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_SILENT, "false"));
 		}catch(Exception ex){
-			IJ.log("No-macro mode");
+			isSilent = false;
 		}
 		
-
-
 		currentImage = WindowManager.getCurrentImage();
 
 		if (currentImage == null) {
@@ -121,7 +106,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		height = currentImage.getHeight();
 		nbSlices = currentImage.getStackSize();
 		length = height * width * nbSlices;
-		title = currentImage.getTitle();
 
 		min = Math.pow(2, currentImage.getBitDepth());
 		max = 0;
@@ -139,34 +123,17 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		ip.setThreshold(threshold, max, ImageProcessor.RED_LUT);
 		currentImage.updateAndDraw();
 
-		minSize = (int) Prefs.get("3D-OC_minSize.double", 10);
-		maxSize = length;
-		exportObjects = Prefs.get("3D-OC_showObj.boolean", true);
-		showCentroids = Prefs.get("3D-OC_showCentro.boolean", true);
-		showCOM = Prefs.get("3D-OC_showCOM.boolean", true);
-
-		redirectTo = Prefs.get("3D-OC-Options_redirectTo.string", "none");
-		redirect = !this.redirectTo.equals("none") && WindowManager.getImage(this.redirectTo) != null;
-
-		if (redirect) {
-			ImagePlus imgRedir = WindowManager.getImage(this.redirectTo);
-			if (!(imgRedir.getWidth() == this.width && imgRedir.getHeight() == this.height
-					&& imgRedir.getNSlices() == this.nbSlices) || imgRedir.getBitDepth() > 16) {
-				redirect = false;
-				if (!isSilent)
-					IJ.log("Redirection canceled: images should have the same size and a depth of 8- or 16-bits.");
-			}
-			if (imgRedir.getTitle().equals(this.title)) {
-				redirect = false;
-				if (!isSilent)
-					IJ.log("Redirection canceled: both images have the same title.");
-			}
-		}
-
-		if (!redirect) {
-			Prefs.set("3D-OC-Options_redirectTo.string", "none");
-			Prefs.set("3D-OC-Options_showMaskedImg.boolean", false);
-		}
+		minSize = (int) Prefs.get("ObjCounter-Options_minSize.integer", 0);
+		maxSize = (int) Prefs.get("ObjCounter-Options_maxSize.integer", length);
+		showObjects = Prefs.get("ObjCounter-Options_showObjects.boolean", false);
+		showCentroids = Prefs.get("ObjCounter-Options_showCentroids.boolean", false);
+		showCOM = Prefs.get("ObjCounter-Options_showCOM.boolean", false);
+		showPointsMap = Prefs.get("ObjCounter-Options_showPointsMap.boolean", false);
+		fast = Prefs.get("ObjCounter-Options_fast.boolean", false);
+		validate = Prefs.get("ObjCounter-Options_validate.boolean", false);
+		fast = Prefs.get("ObjCounter-Options_fast.boolean", false);
+		tolerance = (int) Prefs.get("ObjCounter-Options_tolerance.integer", 0);
+		fraction = Prefs.get("ObjCounter-Options_fraction.double", 0.5);
 		
 	    String outputPathObjects = null;
 		String outputPathPoints = null;
@@ -174,54 +141,51 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			try {
 				threshold = Integer.parseInt(Macro.getValue(macroOptions, PARAM_THRESHOLD, String.valueOf(threshold)));
 				slice = Integer.parseInt(Macro.getValue(macroOptions, PARAM_SLICE, String.valueOf(nbSlices / 2)));
-				fast = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_FAST, "false"));
+				fast = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_FAST, String.valueOf(fast)));
 				minSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MIN, String.valueOf(minSize)));
-				IJ.log(""+minSize);
 				maxSize = Integer.parseInt(Macro.getValue(macroOptions, PARAM_MAX, String.valueOf(maxSize) ));
-				fraction = Double.parseDouble(Macro.getValue(macroOptions, PARAM_FRACTION, "0.5"));
-				tolerance = Integer.parseInt(Macro.getValue(macroOptions, PARAM_TOLERANCE, "0"));
+				fraction = Double.parseDouble(Macro.getValue(macroOptions, PARAM_FRACTION, String.valueOf(fraction)));
+				tolerance = Integer.parseInt(Macro.getValue(macroOptions, PARAM_TOLERANCE, String.valueOf(tolerance)));
 				showCentroids = Boolean.parseBoolean(
 						Macro.getValue(macroOptions, PARAM_SHOW_CENTROIDS, String.valueOf(showCentroids)));
 				showCOM = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_SHOW_COM, String.valueOf(showCOM)));
-				computePointsMap = Boolean
-						.parseBoolean(Macro.getValue(macroOptions, PARAM_COMPUTE_POINTS_MAP, "false"));
-				exportObjects = Boolean.parseBoolean(
-						Macro.getValue(macroOptions, PARAM_EXPORT_OBJECTS, String.valueOf(exportObjects)));
-				exportPoints = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_POINTS, "false"));
-				exportResults = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_EXPORT_RESULTS, "false"));
-				validate = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_VALIDATE, "false"));
+				showPointsMap = Boolean
+						.parseBoolean(Macro.getValue(macroOptions, PARAM_COMPUTE_POINTS_MAP, String.valueOf(showPointsMap)));
+				showObjects = Boolean.parseBoolean(
+						Macro.getValue(macroOptions, PARAM_SHOW_OBJECTS, String.valueOf(showObjects)));
+				validate = Boolean.parseBoolean(Macro.getValue(macroOptions, PARAM_VALIDATE, String.valueOf(validate)));
 				outputPathObjects = Macro.getValue(macroOptions, PARAM_OUTPUT_OBJECTS, null);
 				outputPathPoints = Macro.getValue(macroOptions, PARAM_OUTPUT_POINTS, null);
 			} catch (Exception ex) {
 				if (!isSilent)
-					IJ.error("Any param format is incorrect.");
+					IJ.error("param format is incorrect.");
 				return;
 			}
 		} else {
-			GenericDialog gd = new GenericDialog("ObjCounter v0.0.1 (beta)");
+			GenericDialog gd = new GenericDialog("ObjCounter v0.0.1");
 			gd.addSlider("Threshold", min, max, threshold);
 			gd.addSlider("Slice", 1, nbSlices, nbSlices / 2);
 			sliders = gd.getSliders();
+			
 			((Scrollbar) sliders.elementAt(0)).addAdjustmentListener(this);
 			((Scrollbar) sliders.elementAt(1)).addAdjustmentListener(this);
 			values = gd.getNumericFields();
 			((TextField) values.elementAt(0)).addFocusListener(this);
 			((TextField) values.elementAt(1)).addFocusListener(this);
-			gd.addCheckbox("fast algorithm", false);
+			gd.addCheckbox("Simple 3d propagation", fast);
 			gd.addMessage("Size filter: ");
 			gd.addNumericField("Min.", minSize, 0);
 			gd.addNumericField("Max.", maxSize, 0);
-			gd.addNumericField("Fraction for connections ", 0.5, 3);
-			gd.addNumericField("tollerance for propagation", 0, 0);
-			gd.addMessage("Maps to show: ");
-			gd.addCheckbox("Objects", exportObjects);
+			gd.addMessage("Connection parameters:");
+			gd.addNumericField("Fraction for connections ", fraction, 3);
+			gd.addNumericField("Tolerance for propagation", tolerance, 0);
+			gd.addMessage("");
+			gd.addMessage("What to show: ");
+			gd.addCheckbox("Objects", showObjects);
 			gd.addCheckbox("Centroids", showCentroids);
-			gd.addCheckbox("Centres_of_masses", showCOM);
-			gd.addCheckbox("Point map", false);
-			gd.addCheckbox("Export_points to CSV", false);
-			gd.addCheckbox("Export_results to CSV", false);
-			gd.addCheckbox("validation with overlay", false);
-
+			gd.addCheckbox("Centres of masses", showCOM);
+			gd.addCheckbox("Point map", showPointsMap);
+			gd.addCheckbox("Validation with overlay", false);
 			gd.showDialog();
 
 			if (gd.wasCanceled()) {
@@ -237,24 +201,27 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			maxSize = (int) gd.getNextNumber();
 			fraction = (double) gd.getNextNumber();
 			tolerance = (int) gd.getNextNumber();
-			exportObjects = gd.getNextBoolean();
+			showObjects = gd.getNextBoolean();
 			showCentroids = gd.getNextBoolean();
 			showCOM = gd.getNextBoolean();
-			computePointsMap = gd.getNextBoolean();
-			exportPoints = gd.getNextBoolean();
-			exportResults = gd.getNextBoolean();
+			showPointsMap = gd.getNextBoolean();
 			validate = gd.getNextBoolean();
+			
+			Prefs.set("ObjCounter-Options_showObjects.boolean", showObjects);
+			Prefs.set("ObjCounter-Options_showCentroids.boolean", showCentroids);
+			Prefs.set("ObjCounter-Options_showCOM.boolean", showCOM);
+			Prefs.set("ObjCounter-Options_validate.boolean", validate);
+			Prefs.set("ObjCounter-Options_showPointsMap.boolean", showPointsMap);
+			
+			Prefs.set("ObjCounter-Options_fast.boolean", fast);
+			Prefs.set("ObjCounter-Options_minSize.integer", minSize);
+			Prefs.set("ObjCounter-Options_maxSize.integer", maxSize);
+			Prefs.set("ObjCounter-Options_fraction.double", fraction);
+			Prefs.set("ObjCounter-Options_tolerance.integer", tolerance);
+
 		}
 
-		Prefs.set("3D-OC_minSize.double", minSize);
-		Prefs.set("3D-OC_showObj.boolean", exportObjects);
-		Prefs.set("3D-OC_showCentro.boolean", showCentroids);
-		Prefs.set("3D-OC_showCOM.boolean", showCOM);
-		Prefs.set("Obj_Count_fraction.double", fraction);
-		Prefs.set("Obj_Count_toll.int", tolerance);
-		if (!redirect)
-			Prefs.set("3D-OC-Options_redirectTo.string", "none");
-
+		
 		ip.resetThreshold();
 		currentImage.updateAndDraw();
 
@@ -264,22 +231,17 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		ConnectObjects OC = new ConnectObjects(currentImage, threshold, slice, minSize, maxSize, fraction, tolerance,
 				fast, isSilent);
 
-		dotSize = (int) Prefs.get("3D-OC-Options_dotSize.double", 5);
-		fontSize = (int) Prefs.get("3D-OC-Options_fontSize.double", 10);
-		showNb = Prefs.get("3D-OC-Options_showNb.boolean", true);
-		whiteNb = Prefs.get("3D-OC-Options_whiteNb.boolean", true);
+		dotSize = (int) Prefs.get("ObjCounter-Options_dotSize.double", 5);
+		fontSize = (int) Prefs.get("ObjCounter-Options_fontSize.double", 10);
+		showNb = Prefs.get("ObjCounter-Options_showNb.boolean", true);
+		whiteNb = Prefs.get("ObjCounter-Options_whiteNb.boolean", true);
 
-		if (exportPoints) {
-			if (outputPathPoints != null) {
+		if (outputPathPoints != null) {
 				OC.writeCSV(outputPathPoints);
-			} else {
-				OC.getResultsTable().show("Centroids");
-			}
 		}
-		if (exportObjects) {
+		if (showObjects || outputPathObjects != null) {
 			ImagePlus objectMap = OC.getObjMap(showNb, fontSize);
-			IJ.run(objectMap, "3-3-2 RGB", null);
-			
+			IJ.run(objectMap, "glasbey inverted", null);
 			if (outputPathObjects != null) {
 				IJ.save(objectMap, outputPathObjects);
 			} else {
@@ -288,13 +250,14 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 		}
 		if (showCentroids) {
 			OC.getCentroidMap(showNb, whiteNb, dotSize, fontSize).show();
-			IJ.run("3-3-2 RGB");
+			IJ.run("glasbey inverted");
+			OC.getResultsTable().show("Centroids");
 		}
 		if (showCOM) {
 			OC.getCentreOfMassMap(showNb, whiteNb, dotSize, fontSize).show();
-			IJ.run("3-3-2 RGB");
+			IJ.run("glasbey inverted");
 		}
-		if (computePointsMap) {
+		if (showPointsMap) {
 			OC.computePointsMap().show();
 		}
 
@@ -302,39 +265,6 @@ public class _ObjCounter implements PlugIn, AdjustmentListener, FocusListener {
 			OC.getValidation();
 		}
 
-		if (exportResults) {
-			holes_detection hc = new holes_detection(title);
-			hc.detect();
-
-			Calibration cal = currentImage.getCalibration();
-			double voxelVolume = cal.getX(1) * cal.getY(1) * cal.getZ(1);
-
-			int[] numbPoint = OC.getNumberOfPoint();
-			double volume = width * height * nbSlices * voxelVolume;
-			double density = numbPoint[0] / volume;
-			double densS = numbPoint[1] / volume;
-			double densH = numbPoint[0] / (volume - hc.getHolesVolume());
-			double densSH = numbPoint[1] / (volume - hc.getHolesVolume());
-
-			String fileName = "";
-			try {
-				if (fileName == "") {
-					fileName = title + "_results.csv";
-				}
-				Path fileCSV = Files.createFile(Paths.get(IJ.getDirectory("current"), fileName));
-				String line1 = "stackName, numberObject, numberObjectSter,volume, volumeHoles, denisty, density_Holes, density_Ster, density_Ster_Holes"
-						+ System.lineSeparator();
-				String line2 = title + "," + OC.getNumberOfPoint()[0] + "," + OC.getNumberOfPoint()[1] + "," + volume
-						+ "," + hc.getHolesVolume() + "," + density + "," + densH + "," + densS + "," + densSH
-						+ System.lineSeparator();
-				Files.write(fileCSV, line1.getBytes(), StandardOpenOption.APPEND);
-				Files.write(fileCSV, line2.getBytes(), StandardOpenOption.APPEND);
-
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
 		// compute all the time
 		long elapsedTimeMillis = System.currentTimeMillis() - start;
 		float elapsedTimeSec = elapsedTimeMillis / 1000F;
